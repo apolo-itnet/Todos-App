@@ -3,20 +3,14 @@
     {
       "title": "Floor 2 camera problem ",
       "description": "Hikvision camera not working and ",
-      "completed": true,
+      "completed": false,
       "id": "708d"
     },
     {
       "title": "Printer Trouble",
       "description": "Store depeartment printer problem, L380 time 10.54AM, ",
-      "completed": true,
-      "id": "6fe8"
-    },
-    {
-      "id": "e055",
-      "title": "Jua kehlar Departmant",
-      "description": "IT department shob juari, ",
-      "completed": false
+      "completed": false,
+      "id": "fa69"
     }
   ]
 }

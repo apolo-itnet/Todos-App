@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { todoSchema, TodoInput } from "@/lib/validations/todo";
 import { getTodos, createTodo, updateTodo, deleteTodo } from "@/lib/api";
 import { Todo } from "@/types/todo";
@@ -18,7 +19,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { toast } from "sonner";
 
 export default function TodosApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -32,14 +32,16 @@ export default function TodosApp() {
       description: "",
       completed: false,
     },
+    mode: "onSubmit",
   });
 
-  // Load Todos
+  //Load Todos
   const loadTodos = async () => {
     try {
       const res = await getTodos();
-      setTodos(res.data);
+      setTodos(res.data || []);
     } catch (err) {
+      console.error(err);
       toast.error("Failed to load todos");
     } finally {
       setLoading(false);
@@ -50,40 +52,43 @@ export default function TodosApp() {
     loadTodos();
   }, []);
 
-  // Submit Handler
+  //Submit Handler
   const onSubmit = async (values: TodoInput) => {
     try {
       if (editId) {
-        await updateTodo(editId, values);
+        await updateTodo(editId, values as Todo);
         toast.success("Todo updated!");
       } else {
-        await createTodo(values);
+        await createTodo(values as Todo);
         toast.success("Todo added!");
       }
       form.reset();
       setEditId(null);
       loadTodos();
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       toast.error("Something went wrong!");
     }
   };
 
-  // Edit Handler
+  //Edit Handler
   const handleEdit = (todo: Todo) => {
-    setEditId(todo.id!);
+    if (!todo.id) return;
+    setEditId(todo.id);
     form.setValue("title", todo.title);
     form.setValue("description", todo.description || "");
     form.setValue("completed", todo.completed);
   };
 
-  // Delete Handler
+  //Delete Handler
   const handleDelete = async (id?: number) => {
     if (!id) return;
     try {
       await deleteTodo(id);
       toast.success("Todo deleted!");
       setTodos((prev) => prev.filter((t) => t.id !== id));
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       toast.error("Delete failed");
     }
   };
@@ -96,31 +101,35 @@ export default function TodosApp() {
       {/* Form Section */}
       <Card className="shadow-lg border border-gray-200 rounded-2xl">
         <CardHeader>
-          <CardTitle>{editId ? "✏️ Edit Todo" : " Create New Todo"}</CardTitle>
+          <CardTitle>{editId ? "✏️ Edit Todo" : "➕ Create New Todo"}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-5"
+              noValidate
+            >
+              {/* Title Field */}
               <FormField
                 control={form.control}
                 name="title"
-                render={({ field: { onChange, ...restField }, formState }) => (
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel>Title</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter todo title"
-                        onChange={onChange}
-                        {...restField}
+                        placeholder="Enter todo title..."
+                        {...field}
+                        required
                       />
                     </FormControl>
-                    <FormMessage
-                      error={formState.errors?.title?.message}
-                    />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
 
+              {/* Description Field */}
               <FormField
                 control={form.control}
                 name="description"
@@ -128,13 +137,17 @@ export default function TodosApp() {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Input placeholder="Optional description..." {...field} />
+                      <Input
+                        placeholder="Optional description..."
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
+              {/* Completed Checkbox */}
               <FormField
                 control={form.control}
                 name="completed"
@@ -143,7 +156,9 @@ export default function TodosApp() {
                     <FormControl>
                       <Checkbox
                         checked={field.value}
-                        onCheckedChange={(checked) => field.onChange(!!checked)}
+                        onCheckedChange={(checked) =>
+                          field.onChange(Boolean(checked))
+                        }
                       />
                     </FormControl>
                     <FormLabel>Mark as Completed</FormLabel>
@@ -151,6 +166,7 @@ export default function TodosApp() {
                 )}
               />
 
+              {/* Submit Button */}
               <Button
                 type="submit"
                 className="w-full bg-indigo-500 rounded-lg text-white hover:bg-indigo-600 transition-colors duration-300 ease-in-out cursor-pointer"
@@ -181,7 +197,7 @@ export default function TodosApp() {
                       Title
                     </th>
                     <th className="border border-gray-200 px-4 py-2 text-left">
-                       Status
+                      Status
                     </th>
                     <th className="border border-gray-200 px-4 py-2 text-center">
                       Actions
@@ -208,18 +224,18 @@ export default function TodosApp() {
                           </span>
                         )}
                       </td>
-                      <td className="flex items-center border border-gray-200 px-4 py-2 text-center space-x-2">
+                      <td className="flex items-center justify-center border border-gray-200 px-4 py-2 space-x-2">
                         <Button
-                          className="bg-indigo-500 rounded-lg text-white hover:bg-indigo-600 transition-colors duration-300 ease-in-out cursor-pointer"
-                          variant="outline"
                           onClick={() => handleEdit(todo)}
+                          className="bg-indigo-500 rounded-lg text-white hover:bg-indigo-600 transition-colors duration-300 ease-in-out cursor-pointer"
+                          type="button"
                         >
                           Edit
                         </Button>
                         <Button
-                          className="bg-red-500 rounded-lg text-white hover:bg-red-600 transition-colors duration-300 ease-in-out cursor-pointer"
-                          variant="outline"
                           onClick={() => handleDelete(todo.id)}
+                          className="bg-red-500 rounded-lg text-white hover:bg-red-600 transition-colors duration-300 ease-in-out cursor-pointer"
+                          type="button"
                         >
                           Delete
                         </Button>
